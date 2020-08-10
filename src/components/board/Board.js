@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 
 import { connect } from "react-redux";
 import { createStructuredSelector } from "reselect";
@@ -6,8 +6,14 @@ import { createStructuredSelector } from "reselect";
 import {
   selectBoardHistory,
   selectCurrentMove,
+  selectId,
 } from "../../redux/board/board.selectors";
-import { onMove, onNewGame } from "../../redux/board/board.actions";
+import {
+  onMove,
+  onNewGame,
+  createGameStart,
+  updateGameStart,
+} from "../../redux/board/board.actions";
 
 import Square from "../square/Square";
 import History from "../history/History";
@@ -15,33 +21,27 @@ import StatusMessage from "../statusMessage/StatusMessage";
 
 import { calculateWinner } from "../../utils/helpers";
 
-// const NEW_GAME = [{ board: Array(9).fill(null), isXNext: true }];
-
-const Board = ({ history, currentMove, onMove, onNewGame }) => {
-  // const [history, setHistory] = useState(NEW_GAME);
-  // const [currentMove, setCurrentMove] = useState(0);
-
+const Board = ({
+  history,
+  currentMove,
+  id,
+  onNewGame,
+  createGameStart,
+  updateGameStart,
+}) => {
   const current = history[currentMove];
-  console.log("current ", current);
 
-  const { winner, winningSquares } = calculateWinner(current.board);
+  let { winner, winningSquares } = calculateWinner(current.board);
 
   const handleSquareClick = (position) => {
-    if (current.board[position] || winner) return;
-    onMove(position);
-    // setHistory((prev) => {
-    //   const last = prev[prev.length - 1];
-
-    //   const newBoard = last.board.map((square, pos) => {
-    //     if (pos === position) {
-    //       return last.isXNext ? "X" : "O";
-    //     }
-    //     return square;
-    //   });
-    //   return prev.concat({ board: newBoard, isXNext: !last.isXNext });
-    // });
-
-    // setCurrentMove((prev) => prev + 1);
+    if (current.board[position] || winner) {
+      return;
+    }
+    if (id) {
+      updateGameStart({ position, history, currentMove, winner, id });
+    } else {
+      createGameStart({ position, history, currentMove, winner });
+    }
   };
 
   const renderSquare = (position) => {
@@ -88,11 +88,14 @@ const Board = ({ history, currentMove, onMove, onNewGame }) => {
 const mapStateToProps = createStructuredSelector({
   history: selectBoardHistory,
   currentMove: selectCurrentMove,
+  id: selectId,
 });
 
 const mapDispatchToProps = (dispatch) => ({
   onMove: (position) => dispatch(onMove(position)),
   onNewGame: () => dispatch(onNewGame()),
+  createGameStart: (payload) => dispatch(createGameStart(payload)),
+  updateGameStart: (payload) => dispatch(updateGameStart(payload)),
 });
 
 export default connect(mapStateToProps, mapDispatchToProps)(Board);

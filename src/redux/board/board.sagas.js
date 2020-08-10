@@ -1,29 +1,60 @@
 import { all, call, takeLatest, put } from "redux-saga/effects";
 
-// import UserActionTypes from '../user/user.types';
+import {
+  createGameFailure,
+  createGameSuccess,
+  updateGameSuccess,
+} from "./board.actions";
+import { BoardActionTypes } from "./board.types";
 
-// import { clearCart } from './cart.actions';
+import { callAPI } from "../../utils/callApi";
 
-// export function* clearCartOnSignOut() {
-//   yield put(clearCart());
-// }
+const processedPayload = (payload) => {
+  const last = payload.history[payload.history.length - 1];
+  const newBoard = last.board.map((square, pos) => {
+    if (pos === payload.position) {
+      return last.isXNext ? "X" : "O";
+    }
+    return square;
+  });
+  return {
+    history: payload.history.concat({
+      board: newBoard,
+      isXNext: !last.isXNext,
+    }),
+    currentMove: payload.currentMove + 1,
+    winner: payload.winner,
+  };
+};
 
-// export function* onSignOutSuccess() {
-//   yield takeLatest(UserActionTypes.SIGN_OUT_SUCCESS, clearCartOnSignOut);
-// }
+export function* createNewGame({ payload }) {
+  const gamePayload = processedPayload(payload);
+  try {
+    const result = yield callAPI("POST", "/game/create", gamePayload);
+    yield put(createGameSuccess(result));
+  } catch (error) {
+    yield put(createGameFailure(error));
+  }
+}
 
-// export function* boardSagas() {
-//   yield all([
-//     call(onSignOutSuccess)
-//   ]);
-// }
+export function* updateGame({ payload }) {
+  const gamePayload = processedPayload(payload);
+  try {
+    const result = yield callAPI("PUT", `/games/${payload.id}`, gamePayload);
+    yield put(updateGameSuccess(result));
+  } catch (error) {
+    yield put(createGameFailure(error));
+  }
+}
 
-import { onMove } from "./board.actions";
+export function* onCreateGameStart() {
+  yield takeLatest(BoardActionTypes.CREAT_GAME_START, createNewGame);
+}
 
-export function* clearCartOnSignOut() {
-  yield put(onMove());
+export function* onUpdateGameStart() {
+  yield takeLatest(BoardActionTypes.UPDATE_GAME_START, updateGame);
 }
 
 export function* boardSagas() {
-  yield all([call(onSignOutSuccess)]);
+  yield all([call(onCreateGameStart), call(onUpdateGameStart)]);
 }
